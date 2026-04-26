@@ -1,4 +1,7 @@
 import re
+import machine
+from NeoPanel import NeoPanel
+from neopixel import NeoPixel
 
 ed_state=1
 def ed():
@@ -17,7 +20,7 @@ def ed2(x,y):
     z=(x%3) + ((y%3)*3)
     return int(dither2[z]*25)
 
-
+slices={}
 panels={}
 
 def AddPanel(name,panel):
@@ -49,11 +52,36 @@ def fillPanel(p,clr):
         p.fill(rgb2)
     else:
         #print(f"{type(p)} {rgb} {rgb2}")
-        for y in range(p.height()):
-            for x in range(p.width(y)):
-                grgb=(rgb2[0] if rgb[0]>1024 else (rgb[0]+ed2(x,y))//256,
-                      rgb2[1] if rgb[1]>1024 else (rgb[1]+ed2(x,y))//256,
-                      rgb2[2] if rgb[2]>1024 else (rgb[2]+ed2(x,y))//256)
+        if p.height()==1:
+            pp=p[0]
+            for x in range(p.width(0)):
+                e=ed2(x//3,x%3)
+                grgb=(rgb2[0] if rgb[0]>1024 else (rgb[0]+e)//256,
+                      rgb2[1] if rgb[1]>1024 else (rgb[1]+e)//256,
+                      rgb2[2] if rgb[2]>1024 else (rgb[2]+e)//256)
                 #print(f"{x} {y} {grgb}")
-                p[y][x]=grgb
+                pp[x]=grgb
+        else:
+            for y in range(p.height()):
+                for x in range(p.width(y)):
+                    e=ed2(x,y)
+                    grgb=(rgb2[0] if rgb[0]>1024 else (rgb[0]+e)//256,
+                          rgb2[1] if rgb[1]>1024 else (rgb[1]+e)//256,
+                          rgb2[2] if rgb[2]>1024 else (rgb[2]+e)//256)
+                    #print(f"{x} {y} {grgb}")
+                    p[y][x]=grgb
     p.write()
+
+def loadPanel(cfg):
+    for led in cfg["leds"]: #array
+        p=machine.Pin(led["pin"])
+        np=NeoPixel(p,led["count"])
+        for (sliceName,slice) in led["slices"].items(): #dict
+            nps=np.GetSlice(slice[0],slice[0]+slice[1])
+            slices[sliceName]=nps
+    for (panelName,panel) in cfg["panels"].items(): #dict
+        slice=panel["slice"]
+        nps=slices[slice]
+        npp=NeoPanel(nps,panel["aspect"],panel["spans"])
+        AddPanel(panelName,npp)
+            

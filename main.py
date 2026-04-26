@@ -1,10 +1,10 @@
 import time
 from Commands import cmd,GetCommand
-from NeoPanel import NeoPanel
-from Panel import AddPanel,GetPanel
+#from NeoPanel import NeoPanel
+from Panel import AddPanel,GetPanel, loadPanel
 from Colours import parseColour
-import neopixel
-import machine
+#import neopixel
+#import machine
 import sys
 import asyncio
 import json
@@ -17,12 +17,12 @@ def processSizeCmd(cmd):
     pass
 
 line=""
-async def readCmd():
+async def readCmd(stm):
     global line
-    stm = asyncio.StreamReader(sys.stdin)
     while True:
         line = await stm.readline()
-        while line.endswith(b'\n'):
+        if line==b'': break
+        while line.endswith(b'\n') or line.endswith(b'\r'):
             line=line[:-1]
         if len(line)==0: continue
         try:
@@ -47,16 +47,6 @@ async def readCmd():
             print(f"line is:{type(line)}")
                 
 
-def loadPanel(cfg):
-    for led in cfg["leds"]:
-        p=machine.Pin(led["pin"])
-        np=neopixel.NeoPixel(p,led["count"])
-        for panelName in led["panels"]:
-            panel=led["panels"][panelName]
-            slice=panel["slice"]
-            nps=np.GetSlice(slice[0],slice[0]+slice[1])
-            npp=NeoPanel(nps,panel["aspect"],panel["spans"])
-            AddPanel(panelName,npp)
 
 with open("leds.json",'r') as f:
     cfg = json.load(f)
@@ -85,6 +75,18 @@ with open("leds.json",'r') as f:
 #nps[2].fill((0,0,1))
 #np.write()
 
-t=asyncio.create_task(readCmd())
+stm = asyncio.StreamReader(sys.stdin)
+t=asyncio.create_task(readCmd(stm))
+
+import bleuart
+import bluetooth
+
+def bleproc(stm):
+    asyncio.create_task(readCmd(stm))
+ble=bluetooth.BLE()
+b=bleuart.BLEUART(ble,bleproc)
+t2 = asyncio.create_task(b.peripheral_task())
+
+
 t=asyncio.run_until_complete(t)
 

@@ -23,6 +23,7 @@ def processColourCmd(cmd):
     if not clr or not ps: return
     for p in ps:
         fillPanel(p, clr)
+        p.clr=clr
 
 @cmd("grad")
 def processGrad(cmd):
@@ -54,6 +55,9 @@ def processFadeCmd(cmd):
     if not ps: return
     async def doFade(p,t,stops):
         start=time.ticks_ms()
+        if stops.isSingle():
+            stops=stops.clone()
+            stops.addStart(p.clr)
         await asyncio.sleep(0)
         t*=1000
         end=time.ticks_add(start,t)
@@ -63,7 +67,9 @@ def processFadeCmd(cmd):
             if remain<=0: break
             fillPanel(p,stops((now-start)/t))
             await asyncio.sleep_ms(remain if remain<10 else 10)
-        fillPanel(p,stops(1))
+        clr=stops(1)
+        fillPanel(p,clr)
+        p.clr=clr
     for p in ps:
         asyncio.create_task(doFade(p,t,stops))
 # {"cmd":"fade","time":10,"inter":"hsl","via":"longer","stops":[{"colour":"navy"},{"colour":"maroon"}]}

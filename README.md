@@ -77,35 +77,69 @@ Send JSON commands via stdin to control the LEDs. Commands are processed asynchr
 
 ## Configuration
 
-Panel configurations are defined in `leds.json`, a JSON file that specifies LED strips, pins, and panel layouts. `main.py` loads this file on startup.
+Panel and LED configurations are defined in `leds.json`, a JSON file that specifies hardware setup and panel layouts. `main.py` loads this file on startup.
 
 ### leds.json Structure
+
+The `leds.json` file has two main sections: `leds` (hardware configuration) and `panels` (panel definitions).
+
+#### Hardware Configuration (`leds` array)
+
+Each entry in the `leds` array defines an LED strip/chain:
 
 ```json
 {
   "leds": [
     {
-      "pin": 16,
+      "pin": 1,
       "count": 256,
-      "panels": {
-        "main": {
-          "slice": [0, 128],
-          "aspect": 1.0,
-          "spans": [[0, 7], [8, 15], [16, 23]]
-        },
-        "secondary": {
-          "slice": [128, 128],
-          "aspect": 0.5,
-          "spans": [[0, 16], [16, 16]]
-        }
+      "slices": {
+        "left": [0, 128],
+        "right": [128, 128]
+      }
+    },
+    {
+      "pin": 21,
+      "count": 1,
+      "slices": {
+        "onboard": [0, 1]
       }
     }
   ]
 }
 ```
 
-- `pin`: GPIO pin number for the NeoPixel strip
-- `count`: Total number of LEDs on the strip
+- **`pin`**: GPIO pin number where the LED strip is connected
+- **`count`**: Total number of LEDs on this strip
+- **`slices`**: Named address ranges within this strip. Each slice is defined as `"name": [start, length]`
+
+#### Panel Definitions (`panels` object)
+
+Each panel references a named slice and defines its layout:
+
+```json
+{
+  "panels": {
+    "main": {
+      "aspect": 0.5,
+      "slice": "left",
+      "spans": [
+        [0, 7], [15, 8], [16, 23], [31, 24],
+        [32, 39], [47, 40], [48, 55], [63, 56]
+      ]
+    },
+    "strip": {
+      "aspect": 0,
+      "slice": "main",
+      "spans": [[0, 10]]
+    }
+  }
+}
+```
+
+- **`aspect`**: Width-to-height ratio for gradient calculations (0 = linear strip)
+- **`slice`**: Name of the slice (defined in the `leds` section) this panel uses
+- **`spans`**: Array of `[start, length]` pairs defining rows. Rows can be reversed by swapping start and end indices (e.g., `[15, 8]` reverses a row of 8 LEDs)
 - `panels`: Object mapping panel names to configurations
   - `slice`: [start_index, length] of the LED range for this panel
   - `aspect`: Aspect ratio (width/height) for gradient calculations
